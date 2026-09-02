@@ -2,10 +2,11 @@
 
 import { FormEvent, useState } from 'react';
 import {
-  ArrowRight, BadgeCheck, CheckCircle2, ChevronRight, ClipboardCheck,
-  CloudRain, Droplets, Hammer, HardHat, House, Mail, MapPin, Phone,
-  Search, ShieldCheck, Star, Timer, Wrench,
+  ArrowRight, BadgeCheck, Bot, CheckCircle2, ChevronRight, ClipboardCheck,
+  CloudRain, Droplets, Hammer, HardHat, Headphones, House, Mail, MapPin,
+  MessageSquareText, Mic, Phone, Search, ShieldCheck, Sparkles, Star, Timer, Wrench,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
@@ -36,6 +37,7 @@ const reviews = [
 
 export default function Home() {
   const [submitted, setSubmitted] = useState(false);
+  const [agentMode, setAgentMode] = useState<'idle' | 'call' | 'text'>('idle');
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -61,13 +63,48 @@ export default function Home() {
       <section className="hero" id="top">
         <img className="hero-image" src="https://images.pexels.com/photos/33404248/pexels-photo-33404248.jpeg?auto=compress&cs=tinysrgb&w=1800" alt="Professional roofer installing shingles on a residential roof" />
         <div className="hero-shade" />
-        <div className="shell hero-grid"><div className="hero-copy">
-          <p className="eyebrow"><ShieldCheck size={17} aria-hidden="true" /> Protecting New York since 2008</p>
-          <h1>A stronger roof.<br /><em>A safer home.</em></h1>
-          <p className="hero-lede">Expert roof repair, replacement, and installation across NYC and the surrounding region—done right, without the runaround.</p>
-          <div className="hero-actions"><a className="button button-large" href="#contact">Get a Free Roof Inspection <ArrowRight size={18} aria-hidden="true" /></a><a className="phone-link" href={phoneHref}><span><Phone size={19} aria-hidden="true" /></span><span><small>Talk to a roofer</small>(212) 555-0173</span></a></div>
-          <div className="hero-notes"><span><CheckCircle2 size={16} /> No-obligation inspection</span><span><CheckCircle2 size={16} /> Fast local response</span></div>
-        </div></div>
+        <div className="shell hero-grid">
+          <div className="hero-copy">
+            <p className="eyebrow"><ShieldCheck size={17} aria-hidden="true" /> Protecting New York since 2008</p>
+            <h1>A stronger roof.<br /><em>A safer home.</em></h1>
+            <p className="hero-lede">Expert roof repair, replacement, and installation across NYC and the surrounding region—done right, without the runaround.</p>
+            <div className="hero-actions"><a className="button button-large" href="#contact">Get a Free Roof Inspection <ArrowRight size={18} aria-hidden="true" /></a><a className="phone-link" href={phoneHref}><span><Phone size={19} aria-hidden="true" /></span><span><small>Talk to a roofer</small>(212) 555-0173</span></a></div>
+            <div className="hero-notes"><span><CheckCircle2 size={16} /> No-obligation inspection</span><span><CheckCircle2 size={16} /> Fast local response</span></div>
+          </div>
+
+          <aside className="ai-agent-card" aria-labelledby="ai-agent-title">
+            <div className="agent-card-header">
+              <span className="agent-icon"><Bot size={22} aria-hidden="true" /></span>
+              <span className="agent-status"><i aria-hidden="true" /> Available 24/7</span>
+            </div>
+            <div className="agent-card-copy">
+              <p>Instant roofing help</p>
+              <h2 id="ai-agent-title">Talk to Our AI<br />Roofing Assistant</h2>
+              <span>Ask a question, describe an issue, or get help scheduling your free inspection.</span>
+            </div>
+
+            <div className={`agent-embed-slot ${agentMode !== 'idle' ? 'is-active' : ''}`} aria-live="polite">
+              <div className="agent-signal" aria-hidden="true">
+                <span /><span /><span /><span /><span />
+              </div>
+              <span className="agent-slot-icon"><Mic size={18} aria-hidden="true" /></span>
+              <div>
+                <strong>{agentMode === 'call' ? 'Voice agent selected' : agentMode === 'text' ? 'Text agent selected' : 'AI agent embed area'}</strong>
+                <small>{agentMode === 'idle' ? 'Ready for your ElevenLabs widget' : 'Connect your ElevenLabs agent here'}</small>
+              </div>
+            </div>
+
+            <div className="agent-actions">
+              <Button type="button" className="agent-button agent-call" aria-pressed={agentMode === 'call'} onClick={() => setAgentMode('call')}>
+                <Headphones size={17} aria-hidden="true" /> Call AI Agent
+              </Button>
+              <Button type="button" variant="outline" className="agent-button agent-text" aria-pressed={agentMode === 'text'} onClick={() => setAgentMode('text')}>
+                <MessageSquareText size={17} aria-hidden="true" /> Text AI Agent
+              </Button>
+            </div>
+            <p className="agent-embed-note"><Sparkles size={12} aria-hidden="true" /> ElevenLabs embed-ready placeholder</p>
+          </aside>
+        </div>
       </section>
 
       <section className="trust-bar" aria-label="Company highlights"><div className="shell trust-grid">
