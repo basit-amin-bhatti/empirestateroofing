@@ -13,7 +13,6 @@
 
 # next.js
 /.next/
-/.vinext/
 /out/
 
 # misc
@@ -28,11 +27,10 @@ yarn-error.log*
 
 # local environment
 .env*
+!.env.example
+*.tsbuildinfo
+/playwright-report/
+/test-results/
 
-# deployment and generated files
+# vercel
 .vercel
-next-env.d.ts
-/dist/
-/.wrangler/
-/outputs/
-/work/

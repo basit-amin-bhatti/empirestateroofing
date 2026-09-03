@@ -1,10 +1,12 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import Image from 'next/image';
+import Script from 'next/script';
+import { createElement, SyntheticEvent, useEffect, useRef, useState } from 'react';
 import {
   ArrowRight, BadgeCheck, Bot, CheckCircle2, ChevronRight, ClipboardCheck,
   CloudRain, Droplets, Hammer, HardHat, Headphones, House, Mail, MapPin,
-  MessageSquareText, Mic, Phone, Search, ShieldCheck, Sparkles, Star, Timer, Wrench,
+  Phone, Search, ShieldCheck, Sparkles, Star, Timer, Wrench,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,11 +39,103 @@ const reviews = [
 
 export default function Home() {
   const [submitted, setSubmitted] = useState(false);
-  const [agentMode, setAgentMode] = useState<'idle' | 'call' | 'text'>('idle');
+  const [agentCallActive, setAgentCallActive] = useState(false);
+  const [agentSurfaceOpen, setAgentSurfaceOpen] = useState(false);
+  const [agentWidget, setAgentWidget] = useState<HTMLElement | null>(null);
+  const [agentSessionKey, setAgentSessionKey] = useState(0);
+  const agentLaunchGeneration = useRef(0);
+  const agentTrigger = useRef<HTMLButtonElement>(null);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitted(true);
+  }
+
+  function dismissRoofingAssistant() {
+    agentLaunchGeneration.current += 1;
+    setAgentSurfaceOpen(false);
+    setAgentCallActive(false);
+    setAgentSessionKey((key) => key + 1);
+    agentTrigger.current?.focus();
+  }
+
+  useEffect(() => {
+    if (!agentSurfaceOpen) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') dismissRoofingAssistant();
+    };
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (agentWidget && !event.composedPath().includes(agentWidget)) dismissRoofingAssistant();
+    };
+
+    window.addEventListener('keydown', closeOnEscape);
+    window.addEventListener('click', closeOnOutsideClick, true);
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape);
+      window.removeEventListener('click', closeOnOutsideClick, true);
+    };
+  }, [agentSurfaceOpen, agentWidget]);
+
+  function launchRoofingAssistant() {
+    const generation = ++agentLaunchGeneration.current;
+    setAgentCallActive(true);
+    setAgentSurfaceOpen(true);
+
+    if (typeof window === 'undefined') return;
+
+    const openAgentMode = (attempt = 0) => {
+      if (generation !== agentLaunchGeneration.current) return;
+      const widget = agentWidget;
+      const shadowRoot = widget?.shadowRoot;
+      const integrationStyle = shadowRoot?.querySelector<HTMLStyleElement>('style[data-empire-assistant-integration]');
+
+      if (shadowRoot && !integrationStyle) {
+        const style = document.createElement('style');
+        style.dataset.empireAssistantIntegration = 'true';
+        style.textContent = `
+          .overlay { display: flex !important; align-items: center !important; justify-content: center !important; padding: 24px !important; }
+          .overlay > * { width: min(560px, calc(100vw - 48px)) !important; max-width: calc(100vw - 48px) !important; height: auto !important; min-height: 0 !important; max-height: min(680px, calc(100vh - 48px)) !important; overflow: auto !important; }
+          .overlay p:has(a[href*="elevenlabs.io"]) { display: none !important; }
+          .empire-agent-close { position: fixed; top: max(18px, calc(50vh - 340px)); right: max(18px, calc((100vw - 560px) / 2 + 12px)); z-index: 2147483647; width: 32px; height: 32px; display: grid; place-items: center; padding: 0; border: 1px solid rgba(11,28,43,.16); border-radius: 50%; color: #0b1c2b; background: rgba(255,255,255,.94); box-shadow: 0 4px 14px rgba(0,0,0,.14); font: 500 24px/1 Arial, sans-serif; cursor: pointer; }
+          .empire-agent-close:hover { background: #fff; transform: scale(1.04); }
+          @media (max-width: 700px) { .overlay { padding: 12px !important; } .overlay > * { width: calc(100vw - 24px) !important; max-width: calc(100vw - 24px) !important; max-height: calc(100vh - 24px) !important; } .empire-agent-close { top: 18px; right: 18px; width: 30px; height: 30px; font-size: 22px; } }
+        `;
+        shadowRoot.append(style);
+
+        const closeButton = document.createElement('button');
+        closeButton.type = 'button';
+        closeButton.className = 'empire-agent-close';
+        closeButton.setAttribute('aria-label', 'Close calling assistant');
+        closeButton.textContent = '×';
+        closeButton.addEventListener('click', dismissRoofingAssistant);
+        shadowRoot.append(closeButton);
+
+        shadowRoot.addEventListener('click', (event) => {
+          if (event.target instanceof HTMLElement && event.target.classList.contains('overlay')) dismissRoofingAssistant();
+        });
+      }
+
+      const buttons = widget?.shadowRoot ? Array.from(widget.shadowRoot.querySelectorAll<HTMLButtonElement>('button')) : [];
+      const target = buttons.find((button) => {
+        const label = `${button.getAttribute('aria-label') ?? ''} ${button.textContent ?? ''}`;
+        return !button.disabled && !/close|end|dismiss/i.test(label) && /call|voice|talk/i.test(label);
+      });
+
+      if (target) {
+        target.click();
+        const style = widget?.shadowRoot?.querySelector<HTMLStyleElement>('style[data-empire-assistant-integration]');
+        if (style && !style.textContent?.includes('rounded-compact-sheet')) {
+          style.textContent += '\n.rounded-compact-sheet { display: none !important; }';
+        }
+      } else if (attempt < 20) {
+        window.setTimeout(() => openAgentMode(attempt + 1), 150);
+      }
+    };
+
+    void window.customElements.whenDefined('elevenlabs-convai').then(() => {
+      window.setTimeout(openAgentMode, 80);
+    });
   }
 
   return (
@@ -49,7 +143,7 @@ export default function Home() {
       <header className="site-header">
         <div className="shell nav-wrap">
           <a href="#top" className="brand" aria-label="Empire State Roofing Co. home">
-            <span className="brand-mark" aria-hidden="true">ES</span>
+            <span className="brand-mark" aria-hidden="true"><Image className="brand-logo-image" src="/empire-state-roofing-logo.png" alt="" width={1254} height={1254} priority /></span>
             <span><strong>Empire State</strong><small>Roofing Co.</small></span>
           </a>
           <nav className="desktop-nav" aria-label="Main navigation">
@@ -61,7 +155,7 @@ export default function Home() {
       </header>
 
       <section className="hero" id="top">
-        <img className="hero-image" src="https://images.pexels.com/photos/33404248/pexels-photo-33404248.jpeg?auto=compress&cs=tinysrgb&w=1800" alt="Professional roofer installing shingles on a residential roof" />
+        <Image className="hero-image" src="/roofing-hero.jpg" alt="Professional roofer installing shingles on a residential roof" fill priority sizes="100vw" />
         <div className="hero-shade" />
         <div className="shell hero-grid">
           <div className="hero-copy">
@@ -72,40 +166,45 @@ export default function Home() {
             <div className="hero-notes"><span><CheckCircle2 size={16} /> No-obligation inspection</span><span><CheckCircle2 size={16} /> Fast local response</span></div>
           </div>
 
-          <aside className="ai-agent-card" aria-labelledby="ai-agent-title">
+          <aside className="roofing-assistant-card" aria-labelledby="roofing-assistant-title">
             <div className="agent-card-header">
               <span className="agent-icon"><Bot size={22} aria-hidden="true" /></span>
               <span className="agent-status"><i aria-hidden="true" /> Available 24/7</span>
             </div>
             <div className="agent-card-copy">
               <p>Instant roofing help</p>
-              <h2 id="ai-agent-title">Talk to Our AI<br />Roofing Assistant</h2>
+              <h2 id="roofing-assistant-title">Talk to Our<br />Roofing Assistant</h2>
               <span>Ask a question, describe an issue, or get help scheduling your free inspection.</span>
             </div>
 
-            <div className={`agent-embed-slot ${agentMode !== 'idle' ? 'is-active' : ''}`} aria-live="polite">
-              <div className="agent-signal" aria-hidden="true">
-                <span /><span /><span /><span /><span />
-              </div>
-              <span className="agent-slot-icon"><Mic size={18} aria-hidden="true" /></span>
-              <div>
-                <strong>{agentMode === 'call' ? 'Voice agent selected' : agentMode === 'text' ? 'Text agent selected' : 'AI agent embed area'}</strong>
-                <small>{agentMode === 'idle' ? 'Ready for your ElevenLabs widget' : 'Connect your ElevenLabs agent here'}</small>
-              </div>
-            </div>
-
             <div className="agent-actions">
-              <Button type="button" className="agent-button agent-call" aria-pressed={agentMode === 'call'} onClick={() => setAgentMode('call')}>
-                <Headphones size={17} aria-hidden="true" /> Call AI Agent
-              </Button>
-              <Button type="button" variant="outline" className="agent-button agent-text" aria-pressed={agentMode === 'text'} onClick={() => setAgentMode('text')}>
-                <MessageSquareText size={17} aria-hidden="true" /> Text AI Agent
+              <Button ref={agentTrigger} type="button" className="agent-button agent-call" aria-expanded={agentCallActive} onClick={launchRoofingAssistant}>
+                <Headphones size={22} aria-hidden="true" /> <span className="agent-button-label">Call Mike — Our AI Roofing Assistant</span>
               </Button>
             </div>
-            <p className="agent-embed-note"><Sparkles size={12} aria-hidden="true" /> ElevenLabs embed-ready placeholder</p>
+            <p className="assistant-note"><Sparkles size={13} aria-hidden="true" /> AI Agent <span aria-hidden="true">•</span> Available 24/7</p>
           </aside>
         </div>
       </section>
+
+            {createElement('elevenlabs-convai', {
+              key: agentSessionKey,
+              ref: setAgentWidget,
+              className: 'elevenlabs-agent-embed',
+              style: { display: agentSurfaceOpen ? 'block' : 'none' },
+              'agent-id': 'agent_6501m1h5fcnje81a82sv5ym75x0y',
+              'disable-banner': 'true',
+              'dismissible': 'true',
+              'action-text': 'Talk to Our Roofing Assistant',
+              'start-call-text': 'Call Mike — Our AI Roofing Assistant',
+              'end-call-text': 'End Conversation',
+              'text-contents': JSON.stringify({
+                main_label: 'Talk to Our Roofing Assistant',
+                start_call: 'Call Mike — Our AI Roofing Assistant',
+                end_call: 'End Conversation',
+              }),
+            })}
+      <Script src="https://unpkg.com/@elevenlabs/convai-widget-embed" strategy="afterInteractive" />
 
       <section className="trust-bar" aria-label="Company highlights"><div className="shell trust-grid">
         <div><strong>18</strong><span>Years of<br />experience</span></div><div><strong>5</strong><span>NYC boroughs<br />covered</span></div><div><strong>4</strong><span>Major service<br />regions</span></div><div className="trust-statement"><ShieldCheck size={28} /><span><strong>Built for New York weather.</strong> Backed by local experience.</span></div>
@@ -147,7 +246,7 @@ export default function Home() {
 
       <section className="contact-section" id="contact"><div className="shell contact-grid">
         <div className="contact-copy"><p className="kicker light">Free, no-pressure roof inspection</p><h2>Let’s protect what<br /><em>matters most.</em></h2><p>Tell us a little about your property and we’ll follow up to schedule your complimentary roof inspection.</p><div className="contact-details"><a href={phoneHref}><span><Phone /></span><div><small>Call us directly</small><strong>(212) 555-0173</strong></div></a><a href="mailto:info@empirestateroofing.com"><span><Mail /></span><div><small>Email our team</small><strong>info@empirestateroofing.com</strong></div></a></div></div>
-        <div className="form-card">{submitted ? <div className="success-message" role="status"><CheckCircle2 /><h3>Thanks—we’ve got your request.</h3><p>A member of our roofing team will be in touch shortly to schedule your free inspection.</p><button type="button" onClick={() => setSubmitted(false)}>Send another request</button></div> : <form onSubmit={handleSubmit}>
+        <div className="form-card">{submitted ? <output className="success-message"><CheckCircle2 /><h3>Thanks—we’ve got your request.</h3><p>A member of our roofing team will be in touch shortly to schedule your free inspection.</p><button type="button" onClick={() => setSubmitted(false)}>Send another request</button></output> : <form onSubmit={handleSubmit}>
           <div className="form-heading"><span>Free roof inspection</span><strong>No obligation. No pressure.</strong></div>
           <div className="field-grid"><div className="field"><Label htmlFor="name">Full name</Label><Input id="name" name="name" autoComplete="name" placeholder="Your name" required /></div><div className="field"><Label htmlFor="phone">Phone number</Label><Input id="phone" name="phone" type="tel" autoComplete="tel" placeholder="(212) 555-0000" required /></div></div>
           <div className="field-grid"><div className="field"><Label htmlFor="email">Email address</Label><Input id="email" name="email" type="email" autoComplete="email" placeholder="you@email.com" required /></div><div className="field"><Label htmlFor="zip">ZIP code</Label><Input id="zip" name="zip" inputMode="numeric" autoComplete="postal-code" placeholder="10001" required /></div></div>
@@ -160,7 +259,7 @@ export default function Home() {
       <section className="final-cta"><div className="shell"><div><span className="icon-box inverted"><ShieldCheck /></span><h2>Your roof protects everything.<br /><em>Let us protect your roof.</em></h2><p>Start with a free, no-pressure inspection from a local team with 18 years of experience.</p></div><div className="final-actions"><a className="button button-large" href="#contact">Get a Free Roof Inspection <ArrowRight size={18} /></a><a href={phoneHref}><Phone size={18} /> (212) 555-0173</a></div></div></section>
 
       <footer className="site-footer"><div className="shell footer-main">
-        <div><a href="#top" className="brand footer-brand"><span className="brand-mark">ES</span><span><strong>Empire State</strong><small>Roofing Co.</small></span></a><p>Dependable roofing expertise for New York City and the surrounding region since 2008.</p></div>
+        <div><a href="#top" className="brand footer-brand" aria-label="Empire State Roofing Co. home"><span className="brand-mark" aria-hidden="true"><Image className="brand-logo-image" src="/empire-state-roofing-logo.png" alt="" width={1254} height={1254} /></span><span><strong>Empire State</strong><small>Roofing Co.</small></span></a><p>Dependable roofing expertise for New York City and the surrounding region since 2008.</p></div>
         <div><h3>Services</h3>{services.slice(0, 5).map((service) => <a key={service.title} href="#services">{service.title}</a>)}</div><div><h3>Company</h3><a href="#about">Why choose us</a><a href="#reviews">Reviews</a><a href="#areas">Service areas</a><a href="#contact">Free inspection</a></div><div><h3>Contact</h3><a href={phoneHref}>(212) 555-0173</a><a href="mailto:info@empirestateroofing.com">info@empirestateroofing.com</a><p>NYC · Long Island<br />Westchester · Northern NJ</p></div>
       </div><div className="shell footer-bottom"><span>© 2026 Empire State Roofing Co. All rights reserved.</span><span>Established 2008</span></div></footer>
 
