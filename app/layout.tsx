@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import './depth.css';
 
 export const metadata: Metadata = {
   title: 'Empire State Roofing Co. | NYC Roofing Experts',

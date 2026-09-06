@@ -13,6 +13,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
+import { RoofAssembly } from '@/components/roof-assembly';
+import { useRoofingDepth } from '@/hooks/use-roofing-depth';
+import { RoofingScrollScene } from '@/components/roofing-scroll-scene';
 
 const phoneHref = 'tel:+12125550173';
 
@@ -38,6 +41,7 @@ const reviews = [
 ];
 
 export default function Home() {
+  const depthRoot = useRoofingDepth();
   const [submitted, setSubmitted] = useState(false);
   const [agentCallActive, setAgentCallActive] = useState(false);
   const [agentSurfaceOpen, setAgentSurfaceOpen] = useState(false);
@@ -139,7 +143,8 @@ export default function Home() {
   }
 
   return (
-    <main>
+    <main ref={depthRoot} className="roofing-page">
+      <RoofingScrollScene />
       <header className="site-header">
         <div className="shell nav-wrap">
           <a href="#top" className="brand" aria-label="Empire State Roofing Co. home">
@@ -157,6 +162,7 @@ export default function Home() {
       <section className="hero" id="top">
         <Image className="hero-image" src="/roofing-hero.jpg" alt="Professional roofer installing shingles on a residential roof" fill priority sizes="100vw" />
         <div className="hero-shade" />
+        <div className="hero-roof-depth" aria-hidden="true"><div className="hero-roof-plane" /><div className="hero-roof-fascia" /></div>
         <div className="shell hero-grid">
           <div className="hero-copy">
             <p className="eyebrow"><ShieldCheck size={17} aria-hidden="true" /> Protecting New York since 2008</p>
@@ -216,7 +222,7 @@ export default function Home() {
       </div></section>
 
       <section className="section why-section" id="about"><div className="shell why-grid">
-        <div className="why-visual"><div className="roof-pattern" aria-hidden="true" /><div className="experience-seal"><strong>18</strong><span>Years protecting<br />local properties</span></div></div>
+        <div className="why-visual"><div className="roof-pattern" aria-hidden="true" /><RoofAssembly /><div className="experience-seal"><strong>18</strong><span>Years protecting<br />local properties</span></div></div>
         <div className="why-copy"><p className="kicker light">Why Empire State Roofing</p><h2>Quality you can see.<br /><em>Confidence you can feel.</em></h2><p>Roofing is more than shingles and nails—it’s the system protecting everything below it. We treat every property like the investment it is.</p>
           <div className="why-points"><div><BadgeCheck /><span><strong>Seasoned local experience</strong><small>18 years solving the roofing issues Northeast properties face.</small></span></div><div><Search /><span><strong>Clear, honest assessments</strong><small>Photos, plain-language findings, and options that make sense.</small></span></div><div><Timer /><span><strong>Responsive from start to finish</strong><small>Reliable scheduling, proactive updates, and a tidy jobsite.</small></span></div><div><ShieldCheck /><span><strong>Work built to last</strong><small>Sound methods and materials chosen for long-term performance.</small></span></div></div>
           <a href="#contact" className="text-link">Schedule your free inspection <ArrowRight size={17} /></a>

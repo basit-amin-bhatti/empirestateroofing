@@ -1,0 +1,208 @@
+/* Roofing material, light and elevation. These styles never change the page grid. */
+.roofing-page { position: relative; isolation: isolate; }
+.roof-scroll-scene {
+  position: fixed; z-index: -1; inset: 0; height: 100vh; height: 100svh;
+  overflow: hidden; pointer-events: none; user-select: none;
+  background: #edf0ec; perspective: 1400px;
+  contain: layout paint;
+}
+.roof-scroll-camera {
+  position: absolute; inset: -8%;
+  transform: translate3d(var(--roof-pan-x, 0px), var(--roof-pan-y, 0px), 0) rotateX(var(--roof-pitch, 0deg)) rotateY(var(--roof-yaw, 0deg)) scale(var(--roof-zoom, 1.13));
+  transition: transform .18s ease-out;
+}
+.roof-scroll-photo { object-fit: cover; object-position: 58% 65%; filter: saturate(.55); }
+.roof-scroll-foreground {
+  position: absolute; inset: 52% -15% -20%; opacity: .48;
+  transform: translate3d(var(--roof-detail-x, 0px), var(--roof-detail-y, 0px), 0) rotate(-12deg);
+  transition: transform .18s ease-out; pointer-events: none;
+}
+.roof-scroll-courses {
+  position: absolute; inset: 0;
+  background-color: #4c6270;
+  background-image: linear-gradient(160deg, rgba(201,210,212,.2), rgba(12,34,50,.65)), repeating-linear-gradient(0deg, transparent 0 68px, #223c4c 69px 72px, #86989f 73px 74px), repeating-linear-gradient(90deg, transparent 0 199px, #293f4d 200px 202px);
+  transform-origin: top; transform: perspective(950px) rotateX(52deg);
+  box-shadow: 0 -8px 22px rgba(7,23,36,.24);
+}
+.roof-scroll-gutter {
+  position: absolute; top: -9px; left: 0; right: 0; height: 18px;
+  background: linear-gradient(#c6ccca, #6a7f89 20%, #334d5e 50%, #94a1a6 83%, #354c58);
+  box-shadow: 0 8px 16px rgba(9,24,34,.28);
+}
+.roof-scroll-daylight { position: absolute; inset: 0; background: linear-gradient(110deg, rgba(251,250,247,.25), rgba(255,255,255,.03)), linear-gradient(0deg, rgba(251,250,247,.1), transparent 55%); }
+.roof-scroll-scene[data-visible='true'] .roof-scroll-camera { will-change: transform; }
+.roofing-page :is(.services-section, .process-section, .areas-section) {
+  /* The uninterrupted fixed scene shows through these light surfaces only. */
+  background: linear-gradient(90deg, rgba(251,250,247,.93), rgba(255,255,255,.87) 35%, rgba(255,255,255,.8) 75%, rgba(251,250,247,.78));
+}
+.roofing-page .process-section { background: linear-gradient(90deg, rgba(255,255,255,.91), rgba(255,255,255,.9) 48%, rgba(255,255,255,.79)); }
+.roofing-page .areas-section { background: linear-gradient(90deg, rgba(251,250,247,.96), rgba(251,250,247,.92) 42%, rgba(251,250,247,.8)); }
+.roofing-page :is(.services-section, .process-section, .areas-section) > .shell { position: relative; }
+.roofing-page .area-list > div { background-color: rgba(251,250,247,.9); }
+@media (max-width: 980px), (pointer: coarse) {
+  .roof-scroll-foreground { display: none; }
+  .roof-scroll-photo { object-position: 64% center; filter: none; }
+  .roof-scroll-camera { transition: none; }
+  .roofing-page :is(.services-section, .process-section, .areas-section) { background: linear-gradient(90deg, rgba(251,250,247,.95), rgba(255,255,255,.87)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .roof-scroll-camera { transform: scale(1.13); transition: none; }
+  .roof-scroll-foreground { transform: rotate(-12deg); transition: none; }
+  .roof-scroll-scene[data-visible='true'] .roof-scroll-camera { will-change: auto; }
+}
+.hero { isolation: isolate; }
+.hero-image { pointer-events: none; }
+.hero-shade {
+  background: linear-gradient(90deg, rgba(5,18,29,.97) 0%, rgba(5,18,29,.88) 42%, rgba(5,18,29,.56) 70%, rgba(5,18,29,.38)), linear-gradient(0deg, #071824 0%, transparent 36%);
+}
+.hero::after {
+  content: ''; position: absolute; z-index: 0; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 88% 0%, rgba(246,178,117,.13), transparent 48%);
+  box-shadow: inset 0 -1px rgba(220,159,109,.22);
+}
+.hero h1 { text-shadow: 0 2px 0 rgba(0,0,0,.08), 0 12px 35px rgba(0,0,0,.32); }
+.hero-notes { text-shadow: 0 2px 8px #071824; }
+.hero-roof-depth {
+  position: absolute; inset: auto -4% -78px; height: 200px; z-index: 0;
+  pointer-events: none; perspective: 950px;
+}
+.hero-roof-plane {
+  position: absolute; inset: 0; transform-origin: bottom center;
+  transform: rotateX(52deg) rotateZ(-6deg); border-top: 2px solid rgba(236,171,120,.3);
+  background-color: #173042;
+  background-image: linear-gradient(180deg, rgba(7,23,35,.2), #071723), repeating-linear-gradient(0deg, transparent 0 39px, #061421 40px 43px, #344c5a 44px 45px), repeating-linear-gradient(90deg, transparent 0 139px, rgba(2,12,22,.8) 140px 142px);
+  box-shadow: 0 -12px 34px rgba(0,0,0,.22), inset 0 2px 1px rgba(194,207,212,.2);
+}
+.hero-roof-fascia {
+  position: absolute; left: 2%; right: -3%; top: 20px; height: 9px;
+  transform: rotate(-6deg); opacity: .5;
+  background: linear-gradient(#72828a, #253e4d 28%, #112330 76%, #071824);
+  box-shadow: 0 7px 18px #030d16;
+}
+
+/* A bevel and shallow rim make the assistant read as a mounted control panel. */
+.roofing-assistant-card {
+  background: radial-gradient(ellipse at var(--light-x, 12%) var(--light-y, 0%), rgba(78,114,138,.21), transparent 66%), linear-gradient(145deg, #122c3e, #0b1c2b 62%);
+  border-color: #476176 #253e51 #213647 #506878;
+  box-shadow: 0 1px 0 rgba(228,239,244,.18) inset, 1px 0 0 rgba(190,216,230,.08) inset, 5px 6px 0 #071722, 6px 7px 0 rgba(110,144,162,.2), 12px 22px 30px rgba(0,0,0,.22), 0 35px 65px rgba(0,0,0,.4);
+}
+.roofing-assistant-card::before {
+  height: 3px; background: linear-gradient(90deg, #a9582d, #f3b582 42%, #d87536 76%, #7e4329);
+  box-shadow: 0 1px 12px rgba(216,117,54,.22);
+}
+.agent-icon, .icon-box, .contact-details a > span {
+  border-radius: 2px;
+  box-shadow: inset 0 1px rgba(255,255,255,.18), inset 0 -2px rgba(68,35,15,.08), 0 5px 10px rgba(11,28,43,.07);
+}
+.agent-icon { background: linear-gradient(145deg, rgba(239,157,99,.22), rgba(216,117,54,.06)); border-color: #90613f #5c4637 #5c4637 #90613f; }
+.agent-card-copy h2 { text-shadow: 0 3px 12px rgba(0,0,0,.24); }
+.agent-button, .button {
+  background-image: linear-gradient(155deg, rgba(255,227,190,.14), transparent 54%, rgba(64,25,9,.08));
+  box-shadow: inset 0 1px rgba(255,233,208,.32), inset 0 -2px rgba(87,37,16,.2), 0 4px 0 rgba(107,49,22,.25), 0 9px 18px rgba(87,37,16,.12);
+  transition: transform .22s ease, box-shadow .22s ease, background-color .22s ease;
+}
+.hero .button, .agent-button { box-shadow: inset 0 1px rgba(255,233,208,.38), inset 0 -2px rgba(87,37,16,.25), 0 4px 0 #6e361f, 0 13px 22px rgba(0,0,0,.22); }
+.agent-button:active, .button:active { transform: translateY(2px); box-shadow: inset 0 1px rgba(255,233,208,.22), 0 1px 0 #6e361f, 0 4px 8px rgba(0,0,0,.14); }
+
+.trust-bar {
+  position: relative; z-index: 2;
+  background: linear-gradient(180deg, #faf6ee, var(--cream));
+  box-shadow: inset 0 1px #fff, 0 5px 18px rgba(11,28,43,.04);
+}
+.trust-grid strong { text-shadow: 0 1px #fff; }
+.trust-grid > div { box-shadow: 1px 0 rgba(255,255,255,.8); }
+.trust-grid > div:last-child { box-shadow: none; }
+.service-card, .problem-grid article, .process-grid article, .review-grid blockquote, .area-list > div {
+  position: relative;
+  transition: transform .45s cubic-bezier(.22,.61,.36,1), box-shadow .35s ease, border-color .35s ease;
+}
+.service-card { background: linear-gradient(145deg, #fff 62%, #f5f3ef); box-shadow: inset 0 1px #fff, 0 3px 0 #d7dde0; }
+.service-card::after {
+  content: ''; position: absolute; width: 75px; height: 46px; right: 24px; top: 55px; pointer-events: none; opacity: .5;
+  background: linear-gradient(140deg, #cfd7dc, #eef0f0);
+  clip-path: polygon(0 80%, 50% 12%, 100% 80%, 100% 91%, 50% 27%, 0 91%);
+}
+.service-card .icon-box { border: 1px solid #eee0d4; background: linear-gradient(135deg, #fff5ec, #f1e4da); }
+.service-card .card-number { text-shadow: 0 1px #fff; }
+.problem-grid article { background: linear-gradient(155deg, #fffcf7, #f5f0e9); box-shadow: inset 0 1px rgba(255,255,255,.9); }
+.problem-cta { background: linear-gradient(125deg, #173448, #0b1c2b 65%); box-shadow: inset 0 1px #415365, 0 12px 24px rgba(11,28,43,.12); }
+
+.why-visual { background: radial-gradient(ellipse at 40% 28%, #27495e, #102638 72%); }
+.why-visual .roof-pattern { opacity: .12; background-size: 96px 42px; }
+.why-visual::after { pointer-events: none; background: linear-gradient(150deg, transparent 38%, rgba(2,13,22,.5)); }
+.roof-assembly {
+  position: absolute; z-index: 1; width: min(110%, 640px); height: auto; left: 50%; top: 43%;
+  transform: translate(-50%, -50%); pointer-events: none;
+}
+.roof-shingle-layer, .roof-underlay { transition: transform .8s cubic-bezier(.22,.61,.36,1); }
+.experience-seal { box-shadow: inset 0 1px #f0b17c, 4px 5px 0 #7a442b, 0 16px 32px rgba(0,0,0,.3); }
+.why-points svg { filter: drop-shadow(0 3px 3px rgba(0,0,0,.18)); }
+.why-points strong { text-shadow: 0 2px 8px rgba(0,0,0,.16); }
+.process-icon {
+  background: linear-gradient(135deg, #fff, #eeeae3); border-color: #fff #c1cbd1 #b3c1ca #e0e5e7;
+  box-shadow: 4px 4px 0 #e1e4e3, 8px 8px 20px rgba(11,28,43,.09), inset 0 1px #fff;
+}
+.process-grid::before { border-top-color: #bba28b; }
+.review-grid blockquote {
+  background: radial-gradient(ellipse at var(--light-x, 0%) 0%, rgba(105,143,165,.12), transparent 65%), linear-gradient(145deg, #1d3a50, #142c3f);
+  border-top-color: #546c7e; box-shadow: inset 1px 0 rgba(215,230,237,.06), 0 4px 0 #0b2131, 0 14px 24px rgba(0,0,0,.12);
+}
+.area-list { box-shadow: 0 18px 35px rgba(11,28,43,.04); }
+.area-list > div { background: linear-gradient(115deg, rgba(255,255,255,.75), transparent); box-shadow: inset 0 1px #fff; }
+.area-list svg { filter: drop-shadow(0 3px 2px rgba(145,83,40,.15)); }
+.contact-section { background: radial-gradient(ellipse at 80% 35%, #183448, var(--ink) 68%); }
+.form-card {
+  position: relative; background: linear-gradient(135deg, #fff, #f9f9f6);
+  box-shadow: inset 0 1px white, 5px 6px 0 #73818a, 6px 7px 0 #2d4555, 0 28px 75px rgba(0,0,0,.3);
+}
+.field input, .field textarea, .field select { box-shadow: inset 0 2px 3px rgba(11,28,43,.035); transition: border-color .2s ease, box-shadow .2s ease; }
+.field input:focus, .field textarea:focus, .field select:focus { border-color: #c07b4b; box-shadow: 0 0 0 3px rgba(216,117,54,.1); }
+.final-cta { position: relative; isolation: isolate; }
+.final-cta::before {
+  content: ''; position: absolute; z-index: -1; pointer-events: none; inset: 0;
+  background: linear-gradient(153deg, transparent 66%, rgba(11,28,43,.025) 66.1%, transparent 86%), linear-gradient(27deg, transparent 60%, rgba(216,117,54,.045) 60.1%, transparent 80%);
+}
+.text-link svg, .service-card a svg { transition: transform .22s ease; }
+
+/* Fine-pointer effects are bounded; no continuous animation or hidden content. */
+@media (hover: hover) and (pointer: fine) and (min-width: 981px) and (prefers-reduced-motion: no-preference) {
+  .hero-image { transform: scale(1.045) translate3d(calc(var(--scene-x, 0px) * -1), calc(var(--scene-y, 0px) * -1 + var(--scene-scroll, 0px)), 0); transition: transform .65s ease-out; }
+  .hero-roof-depth { transform: translate3d(var(--scene-x, 0px), var(--scene-y, 0px), 0); transition: transform .7s ease-out; }
+  .hero-copy { transform: translate3d(calc(var(--scene-x, 0px) * .22), calc(var(--scene-y, 0px) * .22), 0); transition: transform .65s ease-out; }
+  .roofing-assistant-card, .service-card, .why-visual, .problem-grid article, .process-grid article, .review-grid blockquote, .area-list > div {
+    transform: perspective(1100px) rotateX(var(--depth-pitch, 0deg)) rotateY(var(--depth-yaw, 0deg)) translateY(var(--depth-lift, 0px));
+    transition: transform .45s cubic-bezier(.22,.61,.36,1), box-shadow .35s ease;
+  }
+  [data-depth-active='true'] { --depth-lift: -3px; will-change: transform; }
+  .roofing-assistant-card[data-depth-active='true'] { --depth-lift: -4px; }
+  .service-card:hover { z-index: 2; box-shadow: inset 0 1px #fff, 0 3px 0 #c6d0d4, 0 22px 34px rgba(11,28,43,.13); }
+  .review-grid blockquote:hover { box-shadow: inset 1px 0 rgba(215,230,237,.12), 0 4px 0 #0b2131, 0 22px 34px rgba(0,0,0,.2); }
+  .area-list > div:hover { box-shadow: inset 0 1px #fff, 0 10px 25px rgba(11,28,43,.07); z-index: 1; }
+  .why-visual[data-depth-active='true'] { --depth-lift: 0px; }
+  .why-visual:hover .roof-shingle-layer { transform: translateY(-9px); }
+  .why-visual:hover .roof-underlay { transform: translateY(-3px); }
+  .text-link:hover svg, .service-card a:hover svg { transform: translateX(3px); }
+}
+
+@media (max-width: 980px), (hover: none), (pointer: coarse) {
+  .hero-roof-depth { height: 150px; bottom: -80px; opacity: .6; }
+  .hero-shade { background: linear-gradient(90deg, rgba(5,18,29,.97), rgba(5,18,29,.72)); }
+  .roofing-assistant-card { box-shadow: inset 0 1px rgba(228,239,244,.16), 3px 4px 0 #071722, 0 18px 32px rgba(0,0,0,.28); }
+  .roof-assembly { width: min(75%, 460px); top: 43%; }
+  .why-visual .experience-seal { bottom: 22px; }
+  .service-card:hover, .button:hover { transform: none; }
+  .form-card { box-shadow: inset 0 1px white, 3px 4px 0 #73818a, 0 18px 38px rgba(0,0,0,.22); }
+}
+@media (max-width: 700px) {
+  .hero-shade { background: linear-gradient(90deg, rgba(5,18,29,.96), rgba(5,18,29,.73)); }
+  .hero-roof-depth { height: 110px; bottom: -45px; }
+  .hero-roof-fascia { display: none; }
+  .roof-assembly { width: min(100%, 370px); top: 38%; }
+  .why-visual .experience-seal { bottom: 18px; }
+  .service-card::after { opacity: .3; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-image, .hero-roof-depth, .hero-copy, .roofing-assistant-card, .service-card, .why-visual, .problem-grid article, .process-grid article, .review-grid blockquote, .area-list > div, .button, .agent-button { transform: none !important; }
+  .roof-shingle-layer, .roof-underlay, .text-link svg, .service-card a svg { transform: none !important; }
+  .agent-status i { animation: none; }
+}

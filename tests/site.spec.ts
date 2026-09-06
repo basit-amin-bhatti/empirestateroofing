@@ -78,3 +78,118 @@ for (const closeWith of ['escape', 'outside', 'close button'] as const) {
     await expect(page.getByRole('dialog', { name: 'Calling assistant' })).toBeVisible();
   });
 }
+
+test('desktop depth responds to the pointer without breaking controls or overflowing', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/');
+  const card = page.locator('.roofing-assistant-card');
+  const initialPosition = await card.boundingBox();
+  await card.hover({ position: { x: 35, y: 35 } });
+  await expect(card).toHaveAttribute('data-depth-active', 'true');
+  await expect.poll(() => card.evaluate(element => getComputedStyle(element).transform)).not.toBe('matrix(1, 0, 0, 1, 0, 0)');
+  expect(await card.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await page.getByRole('button', { name: 'Call Mike — Our AI Roofing Assistant', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Calling assistant' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.mouse.move(1, 1);
+  await expect(card).not.toHaveAttribute('data-depth-active');
+  await expect.poll(async () => Math.abs((await card.boundingBox())!.y - initialPosition!.y)).toBeLessThan(1);
+
+  for (const selector of ['.service-card', '.why-visual', '.problem-grid article', '.process-grid article', '.review-grid blockquote', '.area-list > div']) {
+    const surface = page.locator(selector).first();
+    await surface.hover({ position: { x: 30, y: 30 } });
+    await expect(surface).toHaveAttribute('data-depth-active', 'true');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  }
+});
+
+test('reduced motion disables depth and responds when the preference changes', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/');
+  const card = page.locator('.roofing-assistant-card');
+  await card.hover({ position: { x: 30, y: 30 } });
+  await expect(card).toHaveAttribute('data-depth-active', 'true');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(card).not.toHaveAttribute('data-depth-active');
+  expect(await card.evaluate(element => getComputedStyle(element).transform)).toBe('none');
+  expect(await page.locator('.hero-image').evaluate(element => getComputedStyle(element).transform)).toBe('none');
+  await page.getByRole('button', { name: 'Call Mike — Our AI Roofing Assistant', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Calling assistant' })).toBeVisible();
+  await page.keyboard.press('Escape');
+});
+
+test.describe('touch devices', () => {
+  test.use({ hasTouch: true, isMobile: true });
+  for (const width of [390, 820]) {
+    test(`touch at ${width}px keeps the panel still and controls usable`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto('/');
+      const card = page.locator('.roofing-assistant-card');
+      await card.scrollIntoViewIfNeeded();
+      await card.tap({ position: { x: 25, y: 25 } });
+      await expect(card).not.toHaveAttribute('data-depth-active');
+      expect(await card.evaluate(element => getComputedStyle(element).transform)).toBe('none');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+      await page.getByRole('button', { name: 'Call Mike — Our AI Roofing Assistant', exact: true }).tap();
+      await expect(page.getByRole('dialog', { name: 'Calling assistant' })).toBeVisible();
+      await page.getByRole('button', { name: 'Close calling assistant' }).tap();
+      await expect(page.getByRole('dialog', { name: 'Calling assistant' })).toHaveCount(0);
+      await page.getByLabel('Full name').fill('Test Visitor');
+      await expect(page.getByLabel('Full name')).toHaveValue('Test Visitor');
+    });
+  }
+});
+
+test('one roofing background follows a reversible scroll path without shifting content', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/');
+  const scene = page.locator('.roof-scroll-scene');
+  const camera = scene.locator('.roof-scroll-camera');
+  await expect(scene).toHaveCount(1);
+  const transformations: string[] = [];
+  let firstScroll = 0;
+  for (const [index, selector] of ['.services-section', '.process-section', '.areas-section'].entries()) {
+    await page.locator(selector).scrollIntoViewIfNeeded();
+    await expect(scene).toHaveAttribute('data-visible', 'true');
+    await page.waitForTimeout(300);
+    if (index === 0) firstScroll = await page.evaluate(() => scrollY);
+    transformations.push(await camera.evaluate(element => getComputedStyle(element).transform));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(1440);
+    expect(await scene.evaluate(element => getComputedStyle(element).pointerEvents)).toBe('none');
+  }
+  expect(new Set(transformations).size).toBe(3);
+  await page.evaluate(top => window.scrollTo({ top, behavior: 'instant' }), firstScroll);
+  await page.waitForTimeout(350);
+  expect(await camera.evaluate(element => getComputedStyle(element).transform)).toBe(transformations[0]);
+  const content = page.locator('.service-grid');
+  const before = await content.boundingBox();
+  await scene.evaluate(element => { element.style.display = 'none'; });
+  expect(await content.boundingBox()).toEqual(before);
+});
+
+test('reduced-motion roofing backdrop stays still across light sections', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  const camera = page.locator('.roof-scroll-camera');
+  await page.locator('.services-section').scrollIntoViewIfNeeded();
+  const first = await camera.evaluate(element => getComputedStyle(element).transform);
+  await page.locator('.areas-section').scrollIntoViewIfNeeded();
+  expect(await camera.evaluate(element => getComputedStyle(element).transform)).toBe(first);
+});
+
+test('phone background uses a small pan and omits the foreground layer', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  await page.goto('http://127.0.0.1:3001');
+  await page.locator('.services-section').scrollIntoViewIfNeeded();
+  const camera = page.locator('.roof-scroll-camera');
+  const first = await camera.boundingBox();
+  await expect(page.locator('.roof-scroll-foreground')).toBeHidden();
+  await page.locator('.areas-section').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(100);
+  const last = await camera.boundingBox();
+  expect(Math.abs(last!.y - first!.y)).toBeLessThanOrEqual(24);
+  expect(last!.width).toBe(first!.width);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  await context.close();
+});
