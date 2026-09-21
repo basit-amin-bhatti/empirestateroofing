@@ -8,17 +8,23 @@ test.beforeEach(async ({ page }) => {
         const root = this.attachShadow({mode: 'open'});
         setTimeout(() => {
           if (!this.isConnected) return;
-          const launch = document.createElement('button');
-          launch.textContent = 'Call Mike';
-          launch.className = 'rounded-compact-sheet';
-          launch.onclick = () => {
+          const addLauncher = (label, textOnly) => {
+            const launch = document.createElement('button');
+            launch.textContent = label;
+            launch.className = 'rounded-compact-sheet';
+            launch.onclick = () => {
             const overlay = document.createElement('div');
             overlay.className = 'overlay';
             overlay.style.cssText = 'position:fixed;inset:0;z-index:100;background:#0005';
-            overlay.innerHTML = '<section role="dialog" aria-label="Calling assistant"><button>End Conversation</button><p>Ready to call</p></section>';
+            overlay.innerHTML = textOnly
+              ? '<section role="dialog" aria-label="Chat assistant"><p>Chatting with Mike</p><label>Message Mike<textarea placeholder="Ask Mike about your roof..."></textarea></label><button>Send</button></section>'
+              : '<section role="dialog" aria-label="Calling assistant"><button>End Conversation</button><p>Ready to call</p></section>';
             root.append(overlay);
+            };
+            root.append(launch);
           };
-          root.append(launch);
+          addLauncher('Call Mike', false);
+          addLauncher('Chat with Mike', true);
         }, 350);
       }
     });`,
@@ -31,15 +37,19 @@ for (const width of [320, 375, 430, 700, 768, 980, 1024, 1440]) {
     await page.goto('/');
     const sizes = await page.evaluate(() => {
       const card = document.querySelector('.roofing-assistant-card')!.getBoundingClientRect();
-      const button = document.querySelector('.agent-call')!.getBoundingClientRect();
-      const label = document.querySelector('.agent-button-label')!.getBoundingClientRect();
+      const buttons = Array.from(document.querySelectorAll<HTMLElement>('.agent-button')).map(button => button.getBoundingClientRect());
+      const labels = Array.from(document.querySelectorAll<HTMLElement>('.agent-button-label')).map(label => label.getBoundingClientRect());
       return { pageWidth: document.documentElement.scrollWidth, viewport: innerWidth, cardRight: card.right,
-        buttonRight: button.right, labelRight: label.right, buttonLeft: button.left, labelLeft: label.left };
+        buttons: buttons.map(button => ({ right: button.right, left: button.left })),
+        labels: labels.map(label => ({ right: label.right, left: label.left })) };
     });
     expect(sizes.pageWidth).toBeLessThanOrEqual(sizes.viewport + 1);
-    expect(sizes.buttonRight).toBeLessThanOrEqual(sizes.cardRight);
-    expect(sizes.labelRight).toBeLessThanOrEqual(sizes.buttonRight);
-    expect(sizes.labelLeft).toBeGreaterThanOrEqual(sizes.buttonLeft);
+    expect(sizes.buttons).toHaveLength(2);
+    for (const [index, button] of sizes.buttons.entries()) {
+      expect(button.right).toBeLessThanOrEqual(sizes.cardRight);
+      expect(sizes.labels[index].right).toBeLessThanOrEqual(button.right);
+      expect(sizes.labels[index].left).toBeGreaterThanOrEqual(button.left);
+    }
   });
 }
 
@@ -71,13 +81,32 @@ for (const closeWith of ['escape', 'outside', 'close button'] as const) {
     await expect(page.getByRole('dialog', { name: 'Calling assistant' })).toBeVisible();
     if (closeWith === 'escape') await page.keyboard.press('Escape');
     else if (closeWith === 'outside') await page.locator('elevenlabs-convai .overlay').click({ position: { x: 5, y: 5 } });
-    else await page.getByRole('button', { name: 'Close calling assistant' }).click();
+    else await page.getByRole('button', { name: 'Close roofing assistant' }).click();
     await expect(page.getByRole('dialog', { name: 'Calling assistant' })).toHaveCount(0);
     await expect(trigger).toBeFocused();
     await trigger.click();
     await expect(page.getByRole('dialog', { name: 'Calling assistant' })).toBeVisible();
   });
 }
+
+test('Chat with Mike opens a text-only conversation composer and restores focus on close', async ({ page }) => {
+  await page.goto('/');
+  const chatTrigger = page.getByRole('button', { name: 'Chat with Mike', exact: true });
+  await chatTrigger.click();
+  await expect(page.locator('elevenlabs-convai')).toHaveAttribute('override-text-only', 'true');
+  await expect(page.getByRole('dialog', { name: 'Chat assistant' })).toBeVisible();
+  const composer = page.getByRole('textbox', { name: 'Message Mike' });
+  await expect(composer).toBeVisible();
+  await composer.fill('I need help with a roof leak.');
+  await expect(composer).toHaveValue('I need help with a roof leak.');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Chat assistant' })).toHaveCount(0);
+  await expect(chatTrigger).toBeFocused();
+
+  await page.getByRole('button', { name: 'Call Mike — Our AI Roofing Assistant', exact: true }).click();
+  await expect(page.locator('elevenlabs-convai')).toHaveAttribute('override-text-only', 'false');
+  await expect(page.getByRole('dialog', { name: 'Calling assistant' })).toBeVisible();
+});
 
 test('desktop depth responds to the pointer without breaking controls or overflowing', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -132,7 +161,7 @@ test.describe('touch devices', () => {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
       await page.getByRole('button', { name: 'Call Mike — Our AI Roofing Assistant', exact: true }).tap();
       await expect(page.getByRole('dialog', { name: 'Calling assistant' })).toBeVisible();
-      await page.getByRole('button', { name: 'Close calling assistant' }).tap();
+      await page.getByRole('button', { name: 'Close roofing assistant' }).tap();
       await expect(page.getByRole('dialog', { name: 'Calling assistant' })).toHaveCount(0);
       await page.getByLabel('Full name').fill('Test Visitor');
       await expect(page.getByLabel('Full name')).toHaveValue('Test Visitor');

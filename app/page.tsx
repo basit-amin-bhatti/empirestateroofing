@@ -6,7 +6,7 @@ import { createElement, SyntheticEvent, useEffect, useRef, useState } from 'reac
 import {
   ArrowRight, BadgeCheck, Bot, CheckCircle2, ChevronRight, ClipboardCheck,
   CloudRain, Droplets, Hammer, HardHat, Headphones, House, Mail, MapPin,
-  Phone, Search, ShieldCheck, Sparkles, Star, Timer, Wrench,
+  MessageCircle, Phone, Search, ShieldCheck, Sparkles, Star, Timer, Wrench,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,11 +44,14 @@ export default function Home() {
   const depthRoot = useRoofingDepth();
   const [submitted, setSubmitted] = useState(false);
   const [agentCallActive, setAgentCallActive] = useState(false);
+  const [agentChatActive, setAgentChatActive] = useState(false);
   const [agentSurfaceOpen, setAgentSurfaceOpen] = useState(false);
   const [agentWidget, setAgentWidget] = useState<HTMLElement | null>(null);
   const [agentSessionKey, setAgentSessionKey] = useState(0);
   const agentLaunchGeneration = useRef(0);
   const agentTrigger = useRef<HTMLButtonElement>(null);
+  const agentChatTrigger = useRef<HTMLButtonElement>(null);
+  const lastAgentTrigger = useRef<HTMLButtonElement | null>(null);
 
   function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,8 +62,9 @@ export default function Home() {
     agentLaunchGeneration.current += 1;
     setAgentSurfaceOpen(false);
     setAgentCallActive(false);
+    setAgentChatActive(false);
     setAgentSessionKey((key) => key + 1);
-    agentTrigger.current?.focus();
+    lastAgentTrigger.current?.focus();
   }
 
   useEffect(() => {
@@ -81,12 +85,17 @@ export default function Home() {
     };
   }, [agentSurfaceOpen, agentWidget]);
 
-  function launchRoofingAssistant() {
+  function launchRoofingAssistant(mode: 'call' | 'chat') {
     const generation = ++agentLaunchGeneration.current;
-    setAgentCallActive(true);
+    const textOnly = mode === 'chat';
+    lastAgentTrigger.current = textOnly ? agentChatTrigger.current : agentTrigger.current;
+    setAgentCallActive(!textOnly);
+    setAgentChatActive(textOnly);
     setAgentSurfaceOpen(true);
 
     if (typeof window === 'undefined') return;
+
+    agentWidget?.setAttribute('override-text-only', textOnly ? 'true' : 'false');
 
     const openAgentMode = (attempt = 0) => {
       if (generation !== agentLaunchGeneration.current) return;
@@ -110,7 +119,7 @@ export default function Home() {
         const closeButton = document.createElement('button');
         closeButton.type = 'button';
         closeButton.className = 'empire-agent-close';
-        closeButton.setAttribute('aria-label', 'Close calling assistant');
+        closeButton.setAttribute('aria-label', 'Close roofing assistant');
         closeButton.textContent = '×';
         closeButton.addEventListener('click', dismissRoofingAssistant);
         shadowRoot.append(closeButton);
@@ -123,7 +132,8 @@ export default function Home() {
       const buttons = widget?.shadowRoot ? Array.from(widget.shadowRoot.querySelectorAll<HTMLButtonElement>('button')) : [];
       const target = buttons.find((button) => {
         const label = `${button.getAttribute('aria-label') ?? ''} ${button.textContent ?? ''}`;
-        return !button.disabled && !/close|end|dismiss/i.test(label) && /call|voice|talk/i.test(label);
+        const modePattern = textOnly ? /chat|message|text/i : /call|voice|talk/i;
+        return !button.disabled && !/close|end|dismiss/i.test(label) && modePattern.test(label);
       });
 
       if (target) {
@@ -184,8 +194,11 @@ export default function Home() {
             </div>
 
             <div className="agent-actions">
-              <Button ref={agentTrigger} type="button" className="agent-button agent-call" aria-expanded={agentCallActive} onClick={launchRoofingAssistant}>
+              <Button ref={agentTrigger} type="button" className="agent-button agent-call" aria-expanded={agentCallActive} onClick={() => launchRoofingAssistant('call')}>
                 <Headphones size={22} aria-hidden="true" /> <span className="agent-button-label">Call Mike — Our AI Roofing Assistant</span>
+              </Button>
+              <Button ref={agentChatTrigger} type="button" className="agent-button agent-text" aria-expanded={agentChatActive} onClick={() => launchRoofingAssistant('chat')}>
+                <MessageCircle size={22} aria-hidden="true" /> <span className="agent-button-label">Chat with Mike</span>
               </Button>
             </div>
             <p className="assistant-note"><Sparkles size={13} aria-hidden="true" /> AI Agent <span aria-hidden="true">•</span> Available 24/7</p>
@@ -198,16 +211,24 @@ export default function Home() {
               ref: setAgentWidget,
               className: 'elevenlabs-agent-embed',
               style: { display: agentSurfaceOpen ? 'block' : 'none' },
-              'agent-id': 'agent_6501m1h5fcnje81a82sv5ym75x0y',
+              'agent-id': 'agent_7901m25q9y3yfepvebc1sqwzabky',
               'disable-banner': 'true',
               'dismissible': 'true',
+              'override-text-only': agentChatActive ? 'true' : 'false',
               'action-text': 'Talk to Our Roofing Assistant',
               'start-call-text': 'Call Mike — Our AI Roofing Assistant',
               'end-call-text': 'End Conversation',
               'text-contents': JSON.stringify({
                 main_label: 'Talk to Our Roofing Assistant',
                 start_call: 'Call Mike — Our AI Roofing Assistant',
+                start_chat: 'Chat with Mike',
+                send_message: 'Send',
                 end_call: 'End Conversation',
+                chatting_status: 'Chatting with Mike',
+                input_label: 'Message Mike',
+                input_placeholder: 'Ask Mike about your roof...',
+                input_placeholder_text_only: 'Ask Mike about your roof...',
+                input_placeholder_new_conversation: 'Ask Mike about your roof...',
               }),
             })}
       <Script src="https://unpkg.com/@elevenlabs/convai-widget-embed" strategy="afterInteractive" />
