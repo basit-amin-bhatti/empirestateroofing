@@ -18,6 +18,18 @@ import { useRoofingDepth } from '@/hooks/use-roofing-depth';
 import { RoofingScrollScene } from '@/components/roofing-scroll-scene';
 
 const phoneHref = 'tel:+12125550173';
+const agentTextContents = JSON.stringify({
+  main_label: 'Talk to Our Roofing Assistant',
+  start_call: 'Call Mike — Our AI Roofing Assistant',
+  start_chat: 'Chat with Mike',
+  send_message: 'Send',
+  end_call: 'End Conversation',
+  chatting_status: 'Chatting with Mike',
+  input_label: 'Message Mike',
+  input_placeholder: 'Ask Mike about your roof...',
+  input_placeholder_text_only: 'Ask Mike about your roof...',
+  input_placeholder_new_conversation: 'Ask Mike about your roof...',
+});
 
 const services = [
   { icon: Wrench, title: 'Roof Repair', text: 'Fast, lasting repairs for leaks, storm damage, missing shingles, and worn flashing.' },
@@ -46,8 +58,11 @@ export default function Home() {
   const [agentCallActive, setAgentCallActive] = useState(false);
   const [agentChatActive, setAgentChatActive] = useState(false);
   const [agentSurfaceOpen, setAgentSurfaceOpen] = useState(false);
-  const [agentWidget, setAgentWidget] = useState<HTMLElement | null>(null);
-  const [agentSessionKey, setAgentSessionKey] = useState(0);
+  const [agentMode, setAgentMode] = useState<'call' | 'chat' | null>(null);
+  const [voiceAgentWidget, setVoiceAgentWidget] = useState<HTMLElement | null>(null);
+  const [chatAgentWidget, setChatAgentWidget] = useState<HTMLElement | null>(null);
+  const [voiceSessionKey, setVoiceSessionKey] = useState(0);
+  const [chatSessionKey, setChatSessionKey] = useState(0);
   const agentLaunchGeneration = useRef(0);
   const agentTrigger = useRef<HTMLButtonElement>(null);
   const agentChatTrigger = useRef<HTMLButtonElement>(null);
@@ -58,12 +73,14 @@ export default function Home() {
     setSubmitted(true);
   }
 
-  function dismissRoofingAssistant() {
+  function dismissRoofingAssistant(mode: 'call' | 'chat' | null = agentMode) {
     agentLaunchGeneration.current += 1;
     setAgentSurfaceOpen(false);
     setAgentCallActive(false);
     setAgentChatActive(false);
-    setAgentSessionKey((key) => key + 1);
+    setAgentMode(null);
+    if (mode === 'call') setVoiceSessionKey((key) => key + 1);
+    if (mode === 'chat') setChatSessionKey((key) => key + 1);
     lastAgentTrigger.current?.focus();
   }
 
@@ -71,10 +88,11 @@ export default function Home() {
     if (!agentSurfaceOpen) return;
 
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') dismissRoofingAssistant();
+      if (event.key === 'Escape') dismissRoofingAssistant(agentMode);
     };
     const closeOnOutsideClick = (event: MouseEvent) => {
-      if (agentWidget && !event.composedPath().includes(agentWidget)) dismissRoofingAssistant();
+      const activeWidget = agentMode === 'chat' ? chatAgentWidget : voiceAgentWidget;
+      if (activeWidget && !event.composedPath().includes(activeWidget)) dismissRoofingAssistant(agentMode);
     };
 
     window.addEventListener('keydown', closeOnEscape);
@@ -83,7 +101,7 @@ export default function Home() {
       window.removeEventListener('keydown', closeOnEscape);
       window.removeEventListener('click', closeOnOutsideClick, true);
     };
-  }, [agentSurfaceOpen, agentWidget]);
+  }, [agentSurfaceOpen, agentMode, voiceAgentWidget, chatAgentWidget]);
 
   function launchRoofingAssistant(mode: 'call' | 'chat') {
     const generation = ++agentLaunchGeneration.current;
@@ -91,11 +109,12 @@ export default function Home() {
     lastAgentTrigger.current = textOnly ? agentChatTrigger.current : agentTrigger.current;
     setAgentCallActive(!textOnly);
     setAgentChatActive(textOnly);
+    setAgentMode(mode);
     setAgentSurfaceOpen(true);
 
     if (typeof window === 'undefined') return;
 
-    agentWidget?.setAttribute('override-text-only', textOnly ? 'true' : 'false');
+    const agentWidget = textOnly ? chatAgentWidget : voiceAgentWidget;
 
     const openAgentMode = (attempt = 0) => {
       if (generation !== agentLaunchGeneration.current) return;
@@ -121,11 +140,11 @@ export default function Home() {
         closeButton.className = 'empire-agent-close';
         closeButton.setAttribute('aria-label', 'Close roofing assistant');
         closeButton.textContent = '×';
-        closeButton.addEventListener('click', dismissRoofingAssistant);
+        closeButton.addEventListener('click', () => dismissRoofingAssistant(mode));
         shadowRoot.append(closeButton);
 
         shadowRoot.addEventListener('click', (event) => {
-          if (event.target instanceof HTMLElement && event.target.classList.contains('overlay')) dismissRoofingAssistant();
+          if (event.target instanceof HTMLElement && event.target.classList.contains('overlay')) dismissRoofingAssistant(mode);
         });
       }
 
@@ -207,29 +226,32 @@ export default function Home() {
       </section>
 
             {createElement('elevenlabs-convai', {
-              key: agentSessionKey,
-              ref: setAgentWidget,
-              className: 'elevenlabs-agent-embed',
-              style: { display: agentSurfaceOpen ? 'block' : 'none' },
+              key: `voice-${voiceSessionKey}`,
+              ref: setVoiceAgentWidget,
+              className: 'elevenlabs-agent-embed elevenlabs-agent-voice',
+              style: { display: agentSurfaceOpen && agentCallActive ? 'block' : 'none' },
               'agent-id': 'agent_7901m25q9y3yfepvebc1sqwzabky',
               'disable-banner': 'true',
               'dismissible': 'true',
-              'override-text-only': agentChatActive ? 'true' : 'false',
+              'override-text-only': 'false',
               'action-text': 'Talk to Our Roofing Assistant',
               'start-call-text': 'Call Mike — Our AI Roofing Assistant',
               'end-call-text': 'End Conversation',
-              'text-contents': JSON.stringify({
-                main_label: 'Talk to Our Roofing Assistant',
-                start_call: 'Call Mike — Our AI Roofing Assistant',
-                start_chat: 'Chat with Mike',
-                send_message: 'Send',
-                end_call: 'End Conversation',
-                chatting_status: 'Chatting with Mike',
-                input_label: 'Message Mike',
-                input_placeholder: 'Ask Mike about your roof...',
-                input_placeholder_text_only: 'Ask Mike about your roof...',
-                input_placeholder_new_conversation: 'Ask Mike about your roof...',
-              }),
+              'text-contents': agentTextContents,
+            })}
+            {createElement('elevenlabs-convai', {
+              key: `chat-${chatSessionKey}`,
+              ref: setChatAgentWidget,
+              className: 'elevenlabs-agent-embed elevenlabs-agent-chat',
+              style: { display: agentSurfaceOpen && agentChatActive ? 'block' : 'none' },
+              'agent-id': 'agent_7901m25q9y3yfepvebc1sqwzabky',
+              'disable-banner': 'true',
+              'dismissible': 'true',
+              'override-text-only': 'true',
+              'action-text': 'Talk to Our Roofing Assistant',
+              'start-call-text': 'Call Mike — Our AI Roofing Assistant',
+              'end-call-text': 'End Conversation',
+              'text-contents': agentTextContents,
             })}
       <Script src="https://unpkg.com/@elevenlabs/convai-widget-embed" strategy="afterInteractive" />
 

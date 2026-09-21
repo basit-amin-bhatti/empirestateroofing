@@ -5,10 +5,13 @@ test.beforeEach(async ({ page }) => {
     contentType: 'text/javascript',
     body: `customElements.define('elevenlabs-convai', class extends HTMLElement {
       connectedCallback() {
+        window.__empireMockInstance = (window.__empireMockInstance || 0) + 1;
+        this.dataset.mockInstance = String(window.__empireMockInstance);
         const root = this.attachShadow({mode: 'open'});
         setTimeout(() => {
           if (!this.isConnected) return;
-          const addLauncher = (label, textOnly) => {
+          const textOnly = this.getAttribute('override-text-only') === 'true';
+          const addLauncher = (label) => {
             const launch = document.createElement('button');
             launch.textContent = label;
             launch.className = 'rounded-compact-sheet';
@@ -23,8 +26,7 @@ test.beforeEach(async ({ page }) => {
             };
             root.append(launch);
           };
-          addLauncher('Call Mike', false);
-          addLauncher('Chat with Mike', true);
+          addLauncher(textOnly ? 'Chat with Mike' : 'Call Mike');
         }, 350);
       }
     });`,
@@ -80,7 +82,7 @@ for (const closeWith of ['escape', 'outside', 'close button'] as const) {
     await trigger.click();
     await expect(page.getByRole('dialog', { name: 'Calling assistant' })).toBeVisible();
     if (closeWith === 'escape') await page.keyboard.press('Escape');
-    else if (closeWith === 'outside') await page.locator('elevenlabs-convai .overlay').click({ position: { x: 5, y: 5 } });
+    else if (closeWith === 'outside') await page.locator('.elevenlabs-agent-voice .overlay').click({ position: { x: 5, y: 5 } });
     else await page.getByRole('button', { name: 'Close roofing assistant' }).click();
     await expect(page.getByRole('dialog', { name: 'Calling assistant' })).toHaveCount(0);
     await expect(trigger).toBeFocused();
@@ -91,9 +93,17 @@ for (const closeWith of ['escape', 'outside', 'close button'] as const) {
 
 test('Chat with Mike opens a text-only conversation composer and restores focus on close', async ({ page }) => {
   await page.goto('/');
+  const voiceWidget = page.locator('elevenlabs-convai.elevenlabs-agent-voice');
+  const chatWidget = page.locator('elevenlabs-convai.elevenlabs-agent-chat');
+  await expect(voiceWidget).toHaveCount(1);
+  await expect(chatWidget).toHaveCount(1);
+  await expect(voiceWidget).toHaveAttribute('override-text-only', 'false');
+  await expect(chatWidget).toHaveAttribute('override-text-only', 'true');
+  const initialVoiceSession = await voiceWidget.getAttribute('data-mock-instance');
+  const initialChatSession = await chatWidget.getAttribute('data-mock-instance');
+
   const chatTrigger = page.getByRole('button', { name: 'Chat with Mike', exact: true });
   await chatTrigger.click();
-  await expect(page.locator('elevenlabs-convai')).toHaveAttribute('override-text-only', 'true');
   await expect(page.getByRole('dialog', { name: 'Chat assistant' })).toBeVisible();
   const composer = page.getByRole('textbox', { name: 'Message Mike' });
   await expect(composer).toBeVisible();
@@ -102,10 +112,13 @@ test('Chat with Mike opens a text-only conversation composer and restores focus 
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Chat assistant' })).toHaveCount(0);
   await expect(chatTrigger).toBeFocused();
+  await expect.poll(() => chatWidget.getAttribute('data-mock-instance')).not.toBe(initialChatSession);
+  await expect(voiceWidget).toHaveAttribute('data-mock-instance', initialVoiceSession!);
 
   await page.getByRole('button', { name: 'Call Mike — Our AI Roofing Assistant', exact: true }).click();
-  await expect(page.locator('elevenlabs-convai')).toHaveAttribute('override-text-only', 'false');
   await expect(page.getByRole('dialog', { name: 'Calling assistant' })).toBeVisible();
+  await expect(voiceWidget).toHaveAttribute('override-text-only', 'false');
+  await expect(chatWidget).toHaveAttribute('override-text-only', 'true');
 });
 
 test('desktop depth responds to the pointer without breaking controls or overflowing', async ({ page }) => {
